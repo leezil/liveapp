@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Next.js 기반 라이브 스트리밍 웹 데모 프로젝트입니다.
 
-## Getting Started
+## 구성 기능
 
-First, run the development server:
+- 휴대폰 브라우저에서 송출/시청 가능한 라이브 화면
+- 관리자 페이지에서 라이브 상태 전환
+- 사전 작성 채팅을 실시간처럼 흘려보내는 스크립트
+- 서비스워커 기반 브라우저 알림(로컬 데모)
+
+## 실행 방법
+
+1) 의존성 설치
+
+```bash
+npm install
+```
+
+2) `.env.local` 파일 생성
+
+```bash
+NEXT_PUBLIC_AGORA_APP_ID=YOUR_AGORA_APP_ID
+NEXT_PUBLIC_AGORA_TOKEN=YOUR_TEMP_TOKEN_OR_EMPTY
+NEXT_PUBLIC_AGORA_CHANNEL=film-live-room
+```
+
+3) 개발 서버 실행
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4) 브라우저에서 접속
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `http://localhost:3000` : 역할 선택 화면
+- `/broadcast` : 송출 화면
+- `/watch` : 시청 화면
+- `/admin` : 연출/제어 화면
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 푸시 알림 참고
 
-## Learn More
+현재 구현은 서비스워커를 통한 로컬 알림 데모입니다.
+실운영에서는 FCM(Web Push) + 서버 발송 API + VAPID 키 구성을 추가하세요.
 
-To learn more about Next.js, take a look at the following resources:
+## 배포
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Vercel에 배포하면 모바일에서 URL 접속으로 바로 테스트할 수 있습니다.
