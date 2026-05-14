@@ -10,15 +10,10 @@ const ViewerPlayer = dynamic(
 );
 
 export default function WatchPage() {
-  const { state, latestMessages, connected } = useLiveFeed();
+  const { latestMessages, refetch } = useLiveFeed();
 
   return (
-    <LiveImmersiveShell
-      title={state.title}
-      isLive={state.isLive}
-      connected={connected}
-      messages={latestMessages}
-    >
+    <LiveImmersiveShell messages={latestMessages} onChatSent={refetch}>
       <ViewerPlayer variant="immersive" />
     </LiveImmersiveShell>
   );

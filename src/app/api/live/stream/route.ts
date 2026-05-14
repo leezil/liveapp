@@ -1,6 +1,7 @@
 import { liveDebug } from "@/lib/debugLive";
 import { liveStore } from "@/lib/liveStore";
 
+export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {

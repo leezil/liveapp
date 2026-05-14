@@ -147,7 +147,13 @@ export function BroadcastStudio({ variant = "panel" }: BroadcastStudioProps) {
               {error}
             </p>
           )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/75 to-transparent px-3 pb-3 pt-16">
+          <div
+            className="pointer-events-none absolute inset-x-0 bg-gradient-to-t from-black via-black/75 to-transparent px-3 pt-16"
+            style={{
+              bottom: "calc(5.75rem + env(safe-area-inset-bottom, 0px))",
+              paddingBottom: "0.5rem",
+            }}
+          >
             <div className="pointer-events-auto flex flex-wrap justify-center gap-2">{controlButtons}</div>
           </div>
         </div>

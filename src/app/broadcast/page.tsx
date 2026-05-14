@@ -10,15 +10,13 @@ const BroadcastStudio = dynamic(
 );
 
 export default function BroadcastPage() {
-  const { state, latestMessages, connected } = useLiveFeed();
+  const { latestMessages, refetch } = useLiveFeed();
 
   return (
     <LiveImmersiveShell
-      title={state.title}
-      isLive={state.isLive}
-      connected={connected}
       messages={latestMessages}
       chatReserveBottom="broadcast"
+      onChatSent={refetch}
     >
       <BroadcastStudio variant="immersive" />
     </LiveImmersiveShell>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { liveDebug, liveDebugError } from "@/lib/debugLive";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isLiveDebugEnabled, liveDebug, liveDebugError } from "@/lib/debugLive";
 import type { LiveEvent, LiveMessage, LiveState } from "@/types/live";
 
 const initialState: LiveState = {
@@ -15,48 +15,64 @@ const initialState: LiveState = {
 export function useLiveFeed() {
   const [state, setState] = useState<LiveState>(initialState);
   const [connected, setConnected] = useState(false);
+  const refetchRef = useRef<() => void>(() => {});
+
+  const fetchState = useCallback(async () => {
+    try {
+      const r = await fetch("/api/live/state", { cache: "no-store" });
+      if (!r.ok) throw new Error(String(r.status));
+      const next = (await r.json()) as LiveState;
+      setState(next);
+      setConnected(true);
+    } catch {
+      setConnected(false);
+    }
+  }, []);
 
   useEffect(() => {
+    refetchRef.current = () => void fetchState();
+  }, [fetchState]);
+
+  useEffect(() => {
+    void fetchState();
+    const pollId = setInterval(() => void fetchState(), 1200);
+
     const url = "/api/live/stream";
-    liveDebug("sse", "EventSource 연결", { url });
+    if (isLiveDebugEnabled()) liveDebug("sse", "EventSource 연결", { url });
     const source = new EventSource(url);
 
     source.onopen = () => {
-      liveDebug("sse", "open", { readyState: source.readyState });
+      if (isLiveDebugEnabled()) liveDebug("sse", "open");
       setConnected(true);
     };
     source.onerror = () => {
-      liveDebug("sse", "error", {
-        readyState: source.readyState,
-        hint:
-          source.readyState === EventSource.CLOSED
-            ? "연결 종료됨 — 네트워크/서버리스 인스턴스 불일치 가능"
-            : "재연결 시도 중일 수 있음",
-      });
-      setConnected(false);
+      if (isLiveDebugEnabled()) liveDebug("sse", "error (폴링으로 상태 유지)");
     };
     source.onmessage = (event) => {
       try {
         const parsed = JSON.parse(event.data) as LiveEvent;
-        liveDebug("sse", "message", { type: parsed.type });
         if (parsed.type === "state") {
           setState(parsed.payload);
         }
         if (parsed.type === "message") {
-          setState((prev) => ({ ...prev, messages: [...prev.messages, parsed.payload] }));
+          const msg = parsed.payload as LiveMessage;
+          setState((prev) => {
+            if (prev.messages.some((m) => m.id === msg.id)) return prev;
+            return { ...prev, messages: [...prev.messages, msg] };
+          });
         }
       } catch (e) {
-        liveDebugError("sse", "이벤트 JSON 파싱 실패", e);
+        liveDebugError("sse", "이벤트 파싱 실패", e);
       }
     };
 
     return () => {
-      liveDebug("sse", "EventSource close");
+      clearInterval(pollId);
       source.close();
     };
-  }, []);
+  }, [fetchState]);
 
   const latestMessages: LiveMessage[] = useMemo(() => state.messages.slice(-30), [state.messages]);
 
-  return { state, connected, latestMessages };
+  return { state, connected, latestMessages, refetch: () => void refetchRef.current() };
 }

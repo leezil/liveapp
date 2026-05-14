@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { liveDebug, liveDebugError } from "@/lib/debugLive";
 import { liveStore } from "@/lib/liveStore";
 
+export const dynamic = "force-dynamic";
+
 const defaultScript = [
   { author: "movie_fan01", text: "와 화면 분위기 진짜 좋다" },
   { author: "nightowl", text: "지금 장소 어디예요?" },

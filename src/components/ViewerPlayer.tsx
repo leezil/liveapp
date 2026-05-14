@@ -76,11 +76,6 @@ export function ViewerPlayer({ variant = "panel" }: ViewerPlayerProps) {
             Agora App ID 미설정입니다. `.env.local`을 채워주세요.
           </p>
         )}
-        {connected && (
-          <div className="absolute left-3 top-3 rounded-md bg-emerald-600/85 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
-            스트림 연결됨
-          </div>
-        )}
         {error && (
           <p className="absolute left-3 right-3 top-12 max-h-[28vh] overflow-y-auto rounded-lg bg-rose-950/90 px-3 py-2 text-xs text-rose-100 backdrop-blur-sm">
             {error}
