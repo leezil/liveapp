@@ -16,6 +16,17 @@ export const metadata: Metadata = {
   title: "Live App Demo",
   description: "휴대폰 기반 라이브 스트리밍 웹 데모",
   manifest: "/manifest.webmanifest",
+  icons: {
+    apple: [{ url: "/file.svg", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Live App Demo",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {

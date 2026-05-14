@@ -3,19 +3,46 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LiveMessage } from "@/types/live";
-import { LiveChatDock } from "@/components/LiveChatDock";
+import { LiveChatOverlay } from "@/components/LiveChatOverlay";
+import { useStandaloneDisplay } from "@/hooks/useStandaloneDisplay";
 
 type Props = {
   title: string;
   isLive: boolean;
   connected: boolean;
   messages: LiveMessage[];
+  /** 송출 화면은 하단 버튼 위로 채팅이 오도록 여백을 더 둠 */
+  chatReserveBottom?: "watch" | "broadcast";
   children: React.ReactNode;
 };
 
-export function LiveImmersiveShell({ title, isLive, connected, messages, children }: Props) {
+const HINT_KEY = "liveapp-add-home-hint";
+
+export function LiveImmersiveShell({
+  title,
+  isLive,
+  connected,
+  messages,
+  chatReserveBottom = "watch",
+  children,
+}: Props) {
   const rootRef = useRef<HTMLElement | null>(null);
   const [fsActive, setFsActive] = useState(false);
+  const { standalone, checked } = useStandaloneDisplay();
+  const [isMobile, setIsMobile] = useState(false);
+  const [hintDismissed, setHintDismissed] = useState(true);
+
+  useEffect(() => {
+    setHintDismissed(sessionStorage.getItem(HINT_KEY) === "1");
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px), (pointer: coarse)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const sync = () => {
@@ -36,14 +63,26 @@ export function LiveImmersiveShell({ title, isLive, connected, messages, childre
         await document.exitFullscreen();
       }
     } catch {
-      /* 일부 모바일 브라우저는 요소 전체화면 미지원 */
+      /* iOS 인앱·일부 브라우저는 미지원 */
     }
   }, []);
+
+  const dismissHint = useCallback(() => {
+    sessionStorage.setItem(HINT_KEY, "1");
+    setHintDismissed(true);
+  }, []);
+
+  const showAddHomeHint = checked && !standalone && isMobile && !hintDismissed;
+
+  const bottomReserveClass =
+    chatReserveBottom === "broadcast"
+      ? "pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))]"
+      : "pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))]";
 
   return (
     <main
       ref={rootRef}
-      className="flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-black text-white"
+      className="flex h-[100dvh] max-h-[100dvh] w-full touch-manipulation flex-col overflow-hidden bg-black text-white"
     >
       <header
         className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-sm"
@@ -62,28 +101,59 @@ export function LiveImmersiveShell({ title, isLive, connected, messages, childre
           </div>
           <p className="truncate text-[11px] text-zinc-400">
             {connected ? "채팅·상태 연결됨" : "채팅 연결 재시도 중…"}
+            {standalone ? " · 홈 화면 앱 모드" : ""}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => void toggleFullscreen()}
-            className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white active:bg-white/20"
-          >
-            {fsActive ? "전체화면 끝" : "전체화면"}
-          </button>
-          <Link
-            href="/"
-            className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white active:bg-white/20"
-          >
-            나가기
-          </Link>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void toggleFullscreen()}
+              className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white active:bg-white/20"
+              title="브라우저가 지원할 때만 주소창·탭을 잠시 숨깁니다"
+            >
+              {fsActive ? "전체화면 끝" : "전체화면"}
+            </button>
+            <Link
+              href="/"
+              className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white active:bg-white/20"
+            >
+              나가기
+            </Link>
+          </div>
+          <span className="max-w-[11rem] text-right text-[9px] leading-tight text-zinc-500">
+            주소창 없이 쓰려면 아래 안내대로 홈 화면에 추가
+          </span>
         </div>
       </header>
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="relative min-h-0 flex-1">{children}</div>
-        <LiveChatDock messages={messages} />
+      {showAddHomeHint && (
+        <div className="shrink-0 border-b border-amber-500/25 bg-amber-950/50 px-3 py-2.5 text-[11px] leading-snug text-amber-50">
+          <p className="font-semibold text-amber-200">앱처럼 보이게 (상·하단 브라우저 메뉴 숨기기)</p>
+          <p className="mt-1 text-amber-100/95">
+            <strong className="text-white">Safari</strong>: 공유(□↑) → <strong>홈 화면에 추가</strong> → 바탕화면 아이콘으로
+            실행.
+            <br />
+            <strong className="text-white">Chrome</strong>: ⋮ 메뉴 → <strong>홈 화면에 추가</strong> 또는{" "}
+            <strong>앱 설치</strong>.
+          </p>
+          <p className="mt-1.5 text-[10px] text-amber-200/80">
+            위 방식이면 웹뷰처럼 주소창 없이 전체 화면에 가깝게 열립니다.「전체화면」버튼은 PC·일부 안드로이드에서만
+            브라우저 UI를 잠시 접습니다(iPhone Safari는 제한적).
+          </p>
+          <button
+            type="button"
+            onClick={dismissHint}
+            className="mt-2 text-[11px] font-medium text-amber-300 underline underline-offset-2"
+          >
+            안내 닫기 (다시 보지 않음)
+          </button>
+        </div>
+      )}
+
+      <div className="relative min-h-0 flex-1">
+        {children}
+        <LiveChatOverlay messages={messages} bottomReserveClass={bottomReserveClass} />
       </div>
     </main>
   );

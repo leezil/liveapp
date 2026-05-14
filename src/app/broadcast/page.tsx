@@ -18,6 +18,7 @@ export default function BroadcastPage() {
       isLive={state.isLive}
       connected={connected}
       messages={latestMessages}
+      chatReserveBottom="broadcast"
     >
       <BroadcastStudio variant="immersive" />
     </LiveImmersiveShell>
