@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LiveMessage } from "@/types/live";
 import { LiveChatOverlay } from "@/components/LiveChatOverlay";
+import { usePwaInstallPrompt } from "@/hooks/usePwaInstallPrompt";
 import { useStandaloneDisplay } from "@/hooks/useStandaloneDisplay";
 
 type Props = {
@@ -29,16 +30,29 @@ export function LiveImmersiveShell({
   const rootRef = useRef<HTMLElement | null>(null);
   const [fsActive, setFsActive] = useState(false);
   const { standalone, checked } = useStandaloneDisplay();
-  const [isMobile, setIsMobile] = useState(false);
+  const { canUseInstallPrompt, runInstall } = usePwaInstallPrompt();
   const [hintDismissed, setHintDismissed] = useState(true);
+  const [clientHints, setClientHints] = useState({
+    isMobile: false,
+    isChrome: false,
+    isAndroid: false,
+  });
 
   useEffect(() => {
     setHintDismissed(sessionStorage.getItem(HINT_KEY) === "1");
   }, []);
 
   useEffect(() => {
+    const ua = navigator.userAgent;
+    const isChrome = /Chrome/i.test(ua) && !/Edg|OPR/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
     const mq = window.matchMedia("(max-width: 640px), (pointer: coarse)");
-    const sync = () => setIsMobile(mq.matches);
+    const sync = () =>
+      setClientHints({
+        isMobile: mq.matches,
+        isChrome,
+        isAndroid,
+      });
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
@@ -72,7 +86,11 @@ export function LiveImmersiveShell({
     setHintDismissed(true);
   }, []);
 
-  const showAddHomeHint = checked && !standalone && isMobile && !hintDismissed;
+  const showAddHomeHint =
+    checked &&
+    !standalone &&
+    !hintDismissed &&
+    (clientHints.isMobile || clientHints.isChrome || canUseInstallPrompt);
 
   const bottomReserveClass =
     chatReserveBottom === "broadcast"
@@ -121,25 +139,47 @@ export function LiveImmersiveShell({
               나가기
             </Link>
           </div>
-          <span className="max-w-[11rem] text-right text-[9px] leading-tight text-zinc-500">
-            주소창 없이 쓰려면 아래 안내대로 홈 화면에 추가
+          <span className="max-w-[12rem] text-right text-[9px] leading-tight text-zinc-500">
+            크롬은 메뉴에「앱 설치」로 보일 때가 많아요
           </span>
         </div>
       </header>
 
       {showAddHomeHint && (
         <div className="shrink-0 border-b border-amber-500/25 bg-amber-950/50 px-3 py-2.5 text-[11px] leading-snug text-amber-50">
-          <p className="font-semibold text-amber-200">앱처럼 보이게 (상·하단 브라우저 메뉴 숨기기)</p>
-          <p className="mt-1 text-amber-100/95">
-            <strong className="text-white">Safari</strong>: 공유(□↑) → <strong>홈 화면에 추가</strong> → 바탕화면 아이콘으로
-            실행.
-            <br />
-            <strong className="text-white">Chrome</strong>: ⋮ 메뉴 → <strong>홈 화면에 추가</strong> 또는{" "}
-            <strong>앱 설치</strong>.
+          <p className="font-semibold text-amber-200">앱처럼 (주소창·탭 줄이기)</p>
+
+          {canUseInstallPrompt && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void runInstall()}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow active:bg-emerald-500"
+              >
+                앱으로 설치
+              </button>
+              <span className="text-[10px] text-amber-200/90">크롬이 띄워 준 설치 창입니다. 눌러 진행하세요.</span>
+            </div>
+          )}
+
+          <p className="mt-2 text-amber-100/95">
+            <strong className="text-white">크롬 (안드로이드)</strong>: 우측 상단 <strong>⋮</strong> → 메뉴{" "}
+            <strong>맨 위쪽</strong>에 있는 <strong>「앱 설치」</strong> 또는 <strong>「Live App Demo 설치」</strong>
+            를 찾아보세요. (옛날 이름인 <strong>「홈 화면에 추가」</strong>는 최근 버전에서 안 보일 수 있습니다.) 주소창
+            오른쪽에 <strong>설치(⊕)</strong> 아이콘이 있으면 그걸 눌러도 됩니다.
+          </p>
+          <p className="mt-1.5 text-amber-100/95">
+            <strong className="text-white">크롬 (Windows/Mac)</strong>: <strong>⋮</strong> →{" "}
+            <strong>「앱 설치」</strong> 또는 <strong>「저장 및 공유」</strong> →{" "}
+            <strong>「페이지를 바로가기로 만들기…」</strong> (창이 따로 뜨며, 완전한 전체화면은 앱 설치에 더 가깝습니다.)
+          </p>
+          <p className="mt-1.5 text-amber-100/95">
+            <strong className="text-white">Safari (아이폰)</strong>: 공유(□↑) → <strong>홈 화면에 추가</strong> →
+            바탕화면 아이콘으로 실행.
           </p>
           <p className="mt-1.5 text-[10px] text-amber-200/80">
-            위 방식이면 웹뷰처럼 주소창 없이 전체 화면에 가깝게 열립니다.「전체화면」버튼은 PC·일부 안드로이드에서만
-            브라우저 UI를 잠시 접습니다(iPhone Safari는 제한적).
+            「전체화면」버튼은 브라우저가 허용하는 범위에서만 UI를 접습니다. 주소창을 없애려면 위처럼{" "}
+            <strong>앱 설치</strong> 또는 <strong>홈 화면 바로가기</strong>가 가장 확실합니다.
           </p>
           <button
             type="button"
