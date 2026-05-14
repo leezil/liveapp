@@ -18,7 +18,7 @@ export async function requestNotificationPermission() {
 }
 
 /** 로컬 알림(연출용). 모바일 크롬은 `registration.showNotification` 경로가 안정적입니다. */
-export async function showLocalPush(title: string, body: string) {
+export async function showLocalPush(title: string, body: string, openPath: string = "/watch") {
   if (!("serviceWorker" in navigator)) return false;
 
   const registration = await registerPushWorker();
@@ -33,6 +33,7 @@ export async function showLocalPush(title: string, body: string) {
     vibrate?: number[];
   };
 
+  const path = openPath.trim() || "/watch";
   const opts: ExtendedNotificationOptions = {
     body,
     icon: "/icon-192.png",
@@ -40,6 +41,7 @@ export async function showLocalPush(title: string, body: string) {
     tag: NOTIFICATION_TAG,
     vibrate: [100, 50, 100],
     silent: false,
+    data: { url: path },
   };
 
   try {

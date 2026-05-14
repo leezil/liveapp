@@ -19,13 +19,18 @@ export function configureWebPush(): void {
   vapidConfigured = true;
 }
 
-export async function broadcastWebPush(title: string, body: string): Promise<{
+export async function broadcastWebPush(
+  title: string,
+  body: string,
+  openPath: string = "/watch",
+): Promise<{
   sent: number;
   failed: number;
   removed: number;
 }> {
   configureWebPush();
-  const payload = JSON.stringify({ title, body });
+  const path = openPath.trim() || "/watch";
+  const payload = JSON.stringify({ title, body, url: path });
   const subs = pushSubStore.getAll();
   let sent = 0;
   let failed = 0;

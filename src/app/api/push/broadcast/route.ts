@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 type Body = {
   title?: string;
   body?: string;
+  /** 알림 탭 시 열 경로 (기본 `/watch`) */
+  url?: string;
   pin?: string;
 };
 
@@ -28,9 +30,10 @@ export async function POST(request: Request) {
 
   const title = body.title?.trim() || "Live App";
   const text = body.body?.trim() || "알림이 도착했습니다.";
+  const openPath = body.url?.trim() || "/watch";
 
   try {
-    const result = await broadcastWebPush(title, text);
+    const result = await broadcastWebPush(title, text, openPath);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "발송 실패";
