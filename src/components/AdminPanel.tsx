@@ -103,10 +103,12 @@ export function AdminPanel() {
   };
 
   const sendPush = async () => {
-    const ok = await showLocalPush("라이브 시작!", `${title} 방송이 시작되었습니다.`);
+    const t = pushTitle.trim() || "Live 알림";
+    const b = pushBody.trim() || `${title} 방송 알림`;
+    const ok = await showLocalPush(t, b);
     setStatus(
       ok
-        ? "기기 알림을 보냈습니다. (권한이 허용된 경우)"
+        ? `이 기기 알림: 「${t}」`
         : "알림이 막혔습니다. 브라우저에서 알림을 허용했는지, HTTPS인지 확인하세요.",
     );
   };
@@ -206,16 +208,40 @@ export function AdminPanel() {
       <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900/80 p-3">
         <p className="text-sm font-semibold text-zinc-200">푸시 알림</p>
         <p className="text-[11px] text-zinc-500">
-          <strong className="text-zinc-300">이 기기만</strong> 즉시 띄우기(로컬) /{" "}
-          <strong className="text-zinc-300">구독 등록된 모든 기기</strong>로 보내기(Web Push, 서버)
+          아래 <strong className="text-zinc-300">제목·내용</strong>은{" "}
+          <strong className="text-zinc-300">이 기기만(로컬)</strong>과{" "}
+          <strong className="text-zinc-300">구독 기기(Web Push)</strong> 모두에 동일하게 적용됩니다.
         </p>
         {pushSubs !== null ? (
           <p className="text-[11px] text-emerald-400">현재 서버 구독 수(이 서버 인스턴스): {pushSubs}개</p>
         ) : null}
+
+        <label className="block text-xs text-zinc-400">
+          발송 제목
+          <input
+            value={pushTitle}
+            onChange={(e) => setPushTitle(e.target.value)}
+            className="mt-1 w-full rounded border border-zinc-600 bg-zinc-950 px-2 py-1.5 text-sm"
+            placeholder="예: 라이브 곧 시작"
+            maxLength={120}
+          />
+        </label>
+        <label className="block text-xs text-zinc-400">
+          발송 내용 (비우면「{title} 방송 알림」형태로 보냄)
+          <textarea
+            value={pushBody}
+            onChange={(e) => setPushBody(e.target.value)}
+            rows={4}
+            maxLength={500}
+            className="mt-1 w-full resize-y rounded border border-zinc-600 bg-zinc-950 px-2 py-2 text-sm leading-relaxed"
+            placeholder={`예: ${title} 방송이 곧 시작됩니다. 시청 화면으로 이동해 주세요.`}
+          />
+        </label>
+
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
             type="button"
-            onClick={sendPush}
+            onClick={() => void sendPush()}
             className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-black"
           >
             이 기기에만 (로컬)
@@ -229,23 +255,7 @@ export function AdminPanel() {
             구독 기기에 발송
           </button>
         </div>
-        <label className="block text-xs text-zinc-400">
-          알림 제목
-          <input
-            value={pushTitle}
-            onChange={(e) => setPushTitle(e.target.value)}
-            className="mt-1 w-full rounded border border-zinc-600 bg-zinc-950 px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="block text-xs text-zinc-400">
-          알림 본문 (비우면 라이브 제목 기반)
-          <input
-            value={pushBody}
-            onChange={(e) => setPushBody(e.target.value)}
-            className="mt-1 w-full rounded border border-zinc-600 bg-zinc-950 px-2 py-1.5 text-sm"
-            placeholder={`예: ${title} 방송이 곧 시작됩니다`}
-          />
-        </label>
+
         {pinRequired ? (
           <label className="block text-xs text-amber-300">
             발송 PIN (서버 CREW_PUSH_PIN과 동일)
