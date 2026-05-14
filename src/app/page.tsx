@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PushSubscribeCTA } from "@/components/PushSubscribeCTA";
 
 export default function Home() {
   return (
@@ -7,6 +8,7 @@ export default function Home() {
       <p className="text-sm text-zinc-300">
         영화 촬영용 흐름에 맞춰 송출/시청/연출 제어를 분리했습니다.
       </p>
+      <PushSubscribeCTA />
       <Link className="rounded-xl bg-emerald-500 px-4 py-3 text-center font-semibold" href="/broadcast">
         송출 화면 열기
       </Link>

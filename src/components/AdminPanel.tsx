@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { liveDebug, liveDebugError } from "@/lib/debugLive";
 import { parseScriptChatLines } from "@/lib/scriptChatParse";
 import { showLocalPush } from "@/lib/push";
@@ -39,9 +39,27 @@ export function AdminPanel() {
   const [title, setTitle] = useState("오늘의 라이브");
   const [status, setStatus] = useState("");
 
+  const [pushTitle, setPushTitle] = useState("Live 알림");
+  const [pushBody, setPushBody] = useState("");
+  const [pushPin, setPushPin] = useState("");
+  const [pushSubs, setPushSubs] = useState<number | null>(null);
+  const [pinRequired, setPinRequired] = useState(false);
+  const [vapidConfigured, setVapidConfigured] = useState(false);
+
   const [scriptDelayMs, setScriptDelayMs] = useState(900);
   const [scriptMaxCount, setScriptMaxCount] = useState(0);
   const [scriptText, setScriptText] = useState(DEFAULT_SCRIPT_TEXT);
+
+  useEffect(() => {
+    void fetch("/api/push/status", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { subscribers?: number; pinRequired?: boolean; configured?: boolean }) => {
+        setPushSubs(typeof d.subscribers === "number" ? d.subscribers : null);
+        setPinRequired(Boolean(d.pinRequired));
+        setVapidConfigured(Boolean(d.configured));
+      })
+      .catch(() => {});
+  }, []);
 
   const startLive = async () => {
     try {
@@ -91,6 +109,38 @@ export function AdminPanel() {
         ? "기기 알림을 보냈습니다. (권한이 허용된 경우)"
         : "알림이 막혔습니다. 브라우저에서 알림을 허용했는지, HTTPS인지 확인하세요.",
     );
+  };
+
+  const sendServerPush = async () => {
+    if (!vapidConfigured) {
+      setStatus("VAPID가 설정되지 않았습니다. npm run gen:vapid 후 .env.local을 채우세요.");
+      return;
+    }
+    if (pinRequired && !pushPin.trim()) {
+      setStatus("서버에 CREW_PUSH_PIN이 설정되어 있습니다. PIN을 입력하세요.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/push/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: pushTitle.trim() || "Live 알림",
+          body: pushBody.trim() || `${title} 방송 알림`,
+          ...(pushPin.trim() ? { pin: pushPin.trim() } : {}),
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; sent?: number; failed?: number; removed?: number };
+      if (!res.ok) throw new Error(data.error ?? String(res.status));
+      setStatus(
+        `서버 Web Push: 성공 ${data.sent ?? 0}건, 실패 ${data.failed ?? 0}건, 만료 구독 제거 ${data.removed ?? 0}건`,
+      );
+      const st = await fetch("/api/push/status", { cache: "no-store" }).then((r) => r.json());
+      setPushSubs(typeof st.subscribers === "number" ? st.subscribers : null);
+    } catch (e) {
+      liveDebugError("admin", "서버 푸시 실패", e);
+      setStatus(e instanceof Error ? `서버 푸시 실패: ${e.message}` : "서버 푸시 실패");
+    }
   };
 
   return (
@@ -154,18 +204,63 @@ export function AdminPanel() {
       </div>
 
       <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900/80 p-3">
-        <p className="text-sm font-semibold text-zinc-200">푸시 알림 (로컬)</p>
-        <button
-          type="button"
-          onClick={sendPush}
-          className="w-full rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-black"
-        >
-          푸시 알림 보내기
-        </button>
+        <p className="text-sm font-semibold text-zinc-200">푸시 알림</p>
+        <p className="text-[11px] text-zinc-500">
+          <strong className="text-zinc-300">이 기기만</strong> 즉시 띄우기(로컬) /{" "}
+          <strong className="text-zinc-300">구독 등록된 모든 기기</strong>로 보내기(Web Push, 서버)
+        </p>
+        {pushSubs !== null ? (
+          <p className="text-[11px] text-emerald-400">현재 서버 구독 수(이 서버 인스턴스): {pushSubs}개</p>
+        ) : null}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={sendPush}
+            className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-black"
+          >
+            이 기기에만 (로컬)
+          </button>
+          <button
+            type="button"
+            onClick={() => void sendServerPush()}
+            disabled={!vapidConfigured}
+            className="rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            구독 기기에 발송
+          </button>
+        </div>
+        <label className="block text-xs text-zinc-400">
+          알림 제목
+          <input
+            value={pushTitle}
+            onChange={(e) => setPushTitle(e.target.value)}
+            className="mt-1 w-full rounded border border-zinc-600 bg-zinc-950 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="block text-xs text-zinc-400">
+          알림 본문 (비우면 라이브 제목 기반)
+          <input
+            value={pushBody}
+            onChange={(e) => setPushBody(e.target.value)}
+            className="mt-1 w-full rounded border border-zinc-600 bg-zinc-950 px-2 py-1.5 text-sm"
+            placeholder={`예: ${title} 방송이 곧 시작됩니다`}
+          />
+        </label>
+        {pinRequired ? (
+          <label className="block text-xs text-amber-300">
+            발송 PIN (서버 CREW_PUSH_PIN과 동일)
+            <input
+              type="password"
+              value={pushPin}
+              onChange={(e) => setPushPin(e.target.value)}
+              className="mt-1 w-full rounded border border-amber-700/50 bg-zinc-950 px-2 py-1.5 text-sm"
+              autoComplete="off"
+            />
+          </label>
+        ) : null}
         <p className="text-[11px] leading-snug text-zinc-500">
-          안드로이드 크롬: 사이트 알림을 <strong className="text-zinc-300">허용</strong>한 뒤 버튼을 누르면 상단/알림
-          센터에 뜹니다. iOS Safari는 제한이 많고, <strong className="text-zinc-300">홈 화면에 추가한 웹앱</strong>에서
-          알림을 켠 경우에만 안정적인 편입니다. (서버에서 보내는 FCM/Web Push는 별도 연동이 필요합니다.)
+          Web Push는 홈에서「알림 구독 등록」을 한 기기로 전달됩니다. Vercel 등 서버가 여러 개면 구독이 나뉘어
+          일부만 받을 수 있어요. 운영 시 Redis 등 공유 저장소로 구독 목록을 옮기면 안정적입니다.
         </p>
       </div>
 

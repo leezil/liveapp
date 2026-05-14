@@ -18,18 +18,33 @@ const defaultNotifOpts = {
 };
 
 self.addEventListener("push", (event) => {
-  let payload = { title: "라이브 알림", body: "새 라이브가 시작됐어요." };
-  try {
-    payload = event.data?.json() ?? payload;
-  } catch {
-    // ignore malformed payload
-  }
-
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      ...defaultNotifOpts,
-      body: payload.body,
-    }),
+    (async () => {
+      let payload = { title: "라이브 알림", body: "알림이 도착했습니다." };
+      try {
+        if (event.data && typeof event.data.json === "function") {
+          const maybe = event.data.json();
+          payload = (await Promise.resolve(maybe)) ?? payload;
+        } else if (event.data && typeof event.data.text === "function") {
+          const t = await event.data.text();
+          payload = JSON.parse(t);
+        }
+      } catch {
+        try {
+          if (event.data && typeof event.data.text === "function") {
+            const t = await event.data.text();
+            payload = { title: "라이브 알림", body: t || "알림" };
+          }
+        } catch {
+          /* keep default */
+        }
+      }
+
+      await self.registration.showNotification(payload.title ?? "라이브 알림", {
+        ...defaultNotifOpts,
+        body: payload.body ?? "",
+      });
+    })(),
   );
 });
 
