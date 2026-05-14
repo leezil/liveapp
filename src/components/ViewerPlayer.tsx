@@ -8,7 +8,11 @@ const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
 const token = process.env.NEXT_PUBLIC_AGORA_TOKEN || null;
 const channel = process.env.NEXT_PUBLIC_AGORA_CHANNEL ?? "film-live-room";
 
-export function ViewerPlayer() {
+type ViewerPlayerProps = {
+  variant?: "panel" | "immersive";
+};
+
+export function ViewerPlayer({ variant = "panel" }: ViewerPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
@@ -62,6 +66,29 @@ export function ViewerPlayer() {
       void client?.leave();
     };
   }, []);
+
+  if (variant === "immersive") {
+    return (
+      <div className="live-stage-host relative h-full min-h-0 w-full bg-black text-white">
+        <div ref={containerRef} className="absolute inset-0" />
+        {!appId && (
+          <p className="absolute left-3 right-3 top-14 rounded-lg bg-amber-500/25 px-3 py-2 text-center text-xs text-amber-100 backdrop-blur-sm">
+            Agora App ID 미설정입니다. `.env.local`을 채워주세요.
+          </p>
+        )}
+        {connected && (
+          <div className="absolute left-3 top-3 rounded-md bg-emerald-600/85 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+            스트림 연결됨
+          </div>
+        )}
+        {error && (
+          <p className="absolute left-3 right-3 top-12 max-h-[28vh] overflow-y-auto rounded-lg bg-rose-950/90 px-3 py-2 text-xs text-rose-100 backdrop-blur-sm">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-3 rounded-2xl bg-zinc-900 p-4 text-white">
