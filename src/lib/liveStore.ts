@@ -75,8 +75,16 @@ class LiveStore {
     this.emit({ type: "message", payload: message });
   }
 
-  startScript(messages: Array<{ author: string; text: string }>, intervalMs: number) {
-    if (!messages.length) return;
+  startScript(
+    messages: Array<{ author: string; text: string }>,
+    intervalMs: number,
+    maxMessages?: number,
+  ) {
+    let list = messages;
+    if (typeof maxMessages === "number" && maxMessages > 0) {
+      list = messages.slice(0, maxMessages);
+    }
+    if (!list.length) return;
     if (this.scriptTimer) {
       clearTimeout(this.scriptTimer);
       this.scriptTimer = null;
@@ -84,12 +92,12 @@ class LiveStore {
 
     let index = 0;
     const pushNext = () => {
-      if (index >= messages.length) {
+      if (index >= list.length) {
         this.scriptTimer = null;
         return;
       }
 
-      const current = messages[index];
+      const current = list[index];
       this.pushMessage(current.author, current.text);
       index += 1;
       this.scriptTimer = setTimeout(pushNext, intervalMs);

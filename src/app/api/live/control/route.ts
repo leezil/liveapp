@@ -16,6 +16,8 @@ type Body = {
   action?: "start" | "stop" | "script" | "message";
   title?: string;
   intervalMs?: number;
+  /** 스크립트에서 보낼 최대 줄 수 (미입력·0이면 전체) */
+  maxMessages?: number;
   script?: Array<{ author: string; text: string }>;
   author?: string;
   text?: string;
@@ -39,9 +41,16 @@ export async function POST(request: Request) {
     case "stop":
       liveStore.stopLive();
       return NextResponse.json({ ok: true, state: liveStore.getState() });
-    case "script":
-      liveStore.startScript(body.script ?? defaultScript, Math.max(body.intervalMs ?? 900, 150));
+    case "script": {
+      const interval = Math.max(body.intervalMs ?? 900, 150);
+      const max =
+        typeof body.maxMessages === "number" && body.maxMessages > 0
+          ? Math.min(Math.floor(body.maxMessages), 200)
+          : undefined;
+      const scriptList = body.script && body.script.length > 0 ? body.script : defaultScript;
+      liveStore.startScript(scriptList, interval, max);
       return NextResponse.json({ ok: true });
+    }
     case "message":
       if (!body.author || !body.text) {
         return NextResponse.json({ ok: false, error: "author, text 필요" }, { status: 400 });

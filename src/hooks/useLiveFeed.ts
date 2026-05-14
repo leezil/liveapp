@@ -12,6 +12,25 @@ const initialState: LiveState = {
   messages: [],
 };
 
+const MAX_MERGED_MESSAGES = 100;
+
+function mergeMessages(prev: LiveMessage[], server: LiveMessage[]): LiveMessage[] {
+  const byId = new Map<string, LiveMessage>();
+  for (const m of prev) byId.set(m.id, m);
+  for (const m of server) byId.set(m.id, m);
+  return Array.from(byId.values())
+    .sort((a, b) => a.at - b.at)
+    .slice(-MAX_MERGED_MESSAGES);
+}
+
+/** 폴링이 다른 인스턴스·짧은 배열을 가져와도 이미 보인 채팅은 유지 */
+function mergeLiveState(prev: LiveState, server: LiveState): LiveState {
+  return {
+    ...server,
+    messages: mergeMessages(prev.messages, server.messages),
+  };
+}
+
 export function useLiveFeed() {
   const [state, setState] = useState<LiveState>(initialState);
   const [connected, setConnected] = useState(false);
@@ -22,7 +41,7 @@ export function useLiveFeed() {
       const r = await fetch("/api/live/state", { cache: "no-store" });
       if (!r.ok) throw new Error(String(r.status));
       const next = (await r.json()) as LiveState;
-      setState(next);
+      setState((prev) => mergeLiveState(prev, next));
       setConnected(true);
     } catch {
       setConnected(false);
@@ -52,7 +71,7 @@ export function useLiveFeed() {
       try {
         const parsed = JSON.parse(event.data) as LiveEvent;
         if (parsed.type === "state") {
-          setState(parsed.payload);
+          setState((prev) => mergeLiveState(prev, parsed.payload));
         }
         if (parsed.type === "message") {
           const msg = parsed.payload as LiveMessage;
@@ -72,7 +91,7 @@ export function useLiveFeed() {
     };
   }, [fetchState]);
 
-  const latestMessages: LiveMessage[] = useMemo(() => state.messages.slice(-30), [state.messages]);
+  const latestMessages: LiveMessage[] = useMemo(() => state.messages.slice(-100), [state.messages]);
 
   return { state, connected, latestMessages, refetch: () => void refetchRef.current() };
 }

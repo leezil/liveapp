@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { LiveMessage } from "@/types/live";
 
 type Props = {
@@ -9,16 +9,20 @@ type Props = {
   bottomReserveClass: string;
 };
 
-const VISIBLE = 22;
-
 export function LiveChatOverlay({ messages, bottomReserveClass }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const list = messages.slice(-VISIBLE);
+  const lastMessageIdRef = useRef<string | null>(null);
+  const list = messages;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    const last = messages[messages.length - 1];
+    const lastId = last?.id ?? null;
+    if (lastId !== lastMessageIdRef.current) {
+      lastMessageIdRef.current = lastId;
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages]);
 
   return (
@@ -29,8 +33,9 @@ export function LiveChatOverlay({ messages, bottomReserveClass }: Props) {
       <div
         className="live-chat-fade max-h-[min(46dvh,360px)] min-h-0 overflow-hidden px-3 pt-16"
         style={{
-          maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.65) 18%, black 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.65) 18%, black 100%)",
+          maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 10%, black 22%, black 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 10%, black 22%, black 100%)",
         }}
       >
         <div
